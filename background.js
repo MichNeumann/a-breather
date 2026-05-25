@@ -1,14 +1,17 @@
 chrome.webNavigation.onBeforeNavigate.addListener((details) => {
-  if (details.frameId !== 0) return; // Only target the parent address bar navigation
+  if (details.frameId !== 0) return;
 
   const url = new URL(details.url);
   const hostname = url.hostname.replace("www.", "");
 
-  // Fetch the custom array of target elements
-  chrome.storage.local.get(["blockedSites"], (result) => {
+  // Fetch BOTH the master switch state and the custom block list
+  chrome.storage.local.get(["extensionActive", "blockedSites"], (result) => {
+    const isExtensionActive = result.extensionActive ?? true; // Defaults to true
     const blockedSites = result.blockedSites || [];
-    
-    // Check if the current hostname or its parent matches the blocklist
+
+    // IF the master switch is toggled OFF, drop out instantly and allow navigation
+    if (!isExtensionActive) return;
+
     const matchedSite = blockedSites.find(site => hostname === site || hostname.endsWith("." + site));
 
     if (matchedSite) {
@@ -17,7 +20,6 @@ chrome.webNavigation.onBeforeNavigate.addListener((details) => {
         const currentTime = Date.now();
 
         if (!allowedUntil || currentTime > allowedUntil) {
-          // Pass both the destination and the exact pattern matched to the UI parameters
           const frictionPageUrl = chrome.runtime.getURL(
             `friction.html?target=${encodeURIComponent(details.url)}&site=${encodeURIComponent(matchedSite)}`
           );

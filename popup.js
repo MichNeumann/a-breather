@@ -1,16 +1,27 @@
 document.addEventListener("DOMContentLoaded", () => {
+    const masterToggle = document.getElementById("master-toggle");
     const strictToggle = document.getElementById("strict-toggle");
     const siteInput = document.getElementById("site-input");
     const addBtn = document.getElementById("add-btn");
     const siteListContainer = document.getElementById("site-list");
 
     // 1. Load configuration on startup
-    chrome.storage.local.get(["strictMode", "blockedSites"], (result) => {
+    chrome.storage.local.get(["extensionActive", "strictMode", "blockedSites"], (result) => {
+        masterToggle.checked = result.extensionActive ?? true;
         strictToggle.checked = result.strictMode || false;
         renderSites(result.blockedSites || []);
+
+        // Force a tiny layout calculation gap, then remove the preload blocker
+        setTimeout(() => {
+            document.body.classList.remove("preload");
+        }, 50);
     });
 
-    // 2. Save Strict Mode Configuration Changes
+    // 2. Save Configuration Changes
+    masterToggle.addEventListener("change", (e) => {
+        chrome.storage.local.set({ extensionActive: e.target.checked });
+    });
+
     strictToggle.addEventListener("change", (e) => {
         chrome.storage.local.set({ strictMode: e.target.checked });
     });

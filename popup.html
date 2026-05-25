@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
-  <title>Breather Dashboard</title>
+  <title>A Breather Dashboard</title>
   <style>
     body {
       width: 320px;
@@ -12,8 +13,14 @@
       background-color: #f8fafc;
       color: #1e293b;
     }
-    h2 { font-size: 1.2rem; margin-top: 0; margin-bottom: 16px; font-weight: 600; }
-    
+
+    h2 {
+      font-size: 1.2rem;
+      margin-top: 0;
+      margin-bottom: 16px;
+      font-weight: 600;
+    }
+
     /* Strict Mode Toggle Panel */
     .toggle-container {
       display: flex;
@@ -25,66 +32,162 @@
       border: 1px solid #e2e8f0;
       margin-bottom: 16px;
     }
-    .toggle-label { font-size: 0.95rem; font-weight: 500; }
+
+    .toggle-label {
+      font-size: 0.95rem;
+      font-weight: 500;
+    }
+
     .switch {
       position: relative;
       display: inline-block;
       width: 44px;
       height: 24px;
     }
-    .switch input { opacity: 0; width: 0; height: 0; }
-    .slider {
-      position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
-      background-color: #cbd5e1; transition: .3s; border-radius: 24px;
-    }
-    .slider:before {
-      position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px;
-      background-color: white; transition: .3s; border-radius: 50%;
-    }
-    input:checked + .slider { background-color: #6366f1; }
-    input:checked + .slider:before { transform: translateX(20px); }
 
-    /* Input Controls */
-    .input-box { display: flex; gap: 8px; margin-bottom: 16px; }
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #cbd5e1;
+      border-radius: 24px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      border-radius: 50%;
+    }
+
+    /* General Extension Theme: Blue */
+    input:checked+.slider {
+      background-color: #2563eb;
+    }
+
+    /* Specific Extension Enable Override: Red Theme */
+    #master-toggle:checked+.slider {
+      background-color: #00ab66;
+    }
+
+    input:checked+.slider:before {
+      transform: translateX(20px);
+    }
+
+    /* Input Controls (Blue Theme) */
+    .input-box {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
     input[type="text"] {
-      flex: 1; padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.9rem;
+      flex: 1;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #cbd5e1;
+      font-size: 0.9rem;
     }
-    input[type="text"]:focus { outline: 2px solid #6366f1; border-color: transparent; }
+
+    input[type="text"]:focus {
+      outline: 2px solid #3b82f6;
+      border-color: transparent;
+    }
+
     button {
-      background: #6366f1; color: white; border: none; padding: 0 14px;
-      border-radius: 8px; font-weight: 500; cursor: pointer; font-size: 0.9rem;
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 0 14px;
+      border-radius: 8px;
+      font-weight: 500;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: background-color 0.2s ease;
     }
-    button:hover { background: #4f46e5; }
+
+    button:hover {
+      background: #1d4ed8;
+    }
 
     /* Sites List */
     .site-list {
-      max-height: 180px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;
+      max-height: 180px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
     }
+
     .site-item {
-      display: flex; justify-content: space-between; align-items: center;
-      background: white; padding: 10px 12px; border-radius: 8px;
-      border: 1px solid #e2e8f0; font-size: 0.9rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: white;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+      font-size: 0.9rem;
     }
+
     .delete-btn {
-      background: transparent; color: #ef4444; border: none; padding: 4px 8px;
-      cursor: pointer; font-size: 0.85rem; font-weight: bold;
+      background: transparent;
+      color: #ef4444;
+      border: none;
+      padding: 4px 8px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: bold;
     }
-    .delete-btn:hover { color: #b91c1c; background: #ffeeee; border-radius: 4px; }
+
+    .delete-btn:hover {
+      color: #b91c1c;
+      background: #ffeeee;
+      border-radius: 4px;
+    }
+
+    /* Only allow smooth transitions AFTER the page has fully loaded its data */
+    body:not(.preload) .slider,
+    body:not(.preload) .slider:before {
+      transition: transform .3s ease, background-color .3s ease;
+    }
   </style>
 </head>
-<body>
 
-  <h2>Breather Settings</h2>
-  
-  <div class="toggle-container">
-    <span class="toggle-label">Strict Mode (Kick mid-session)</span>
+<body class="preload">
+
+  <h2>A Breather, Settings</h2>
+
+  <div class="toggle-container" style="border-bottom: none; border-radius: 12px 12px 0 0; margin-bottom: 0;">
+    <span class="toggle-label" style="color: #000000; font-weight: bold;">"A Breather" Active?</span>
+    <label class="switch">
+      <input type="checkbox" id="master-toggle">
+      <span class="slider"></span>
+    </label>
+  </div>
+
+  <div class="toggle-container" style="border-top: none; border-radius: 0 0 12px 12px; margin-top: -1px;">
+    <span class="toggle-label">Strict Mode (Kick Mid-Session)?</span>
     <label class="switch">
       <input type="checkbox" id="strict-toggle">
       <span class="slider"></span>
     </label>
   </div>
 
-  <div class="input-box">
+  <div class="input-box" style="margin-top: 16px;">
     <input type="text" id="site-input" placeholder="e.g., instagram.com">
     <button id="add-btn">Add</button>
   </div>
@@ -93,4 +196,5 @@
 
   <script src="popup.js"></script>
 </body>
+
 </html>
