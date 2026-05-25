@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Breather Dashboard</title>
+  <style>
+    body {
+      width: 320px;
+      padding: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      background-color: #f8fafc;
+      color: #1e293b;
+    }
+    h2 { font-size: 1.2rem; margin-top: 0; margin-bottom: 16px; font-weight: 600; }
+    
+    /* Strict Mode Toggle Panel */
+    .toggle-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: white;
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+      margin-bottom: 16px;
+    }
+    .toggle-label { font-size: 0.95rem; font-weight: 500; }
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+    }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #cbd5e1; transition: .3s; border-radius: 24px;
+    }
+    .slider:before {
+      position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px;
+      background-color: white; transition: .3s; border-radius: 50%;
+    }
+    input:checked + .slider { background-color: #6366f1; }
+    input:checked + .slider:before { transform: translateX(20px); }
+
+    /* Input Controls */
+    .input-box { display: flex; gap: 8px; margin-bottom: 16px; }
+    input[type="text"] {
+      flex: 1; padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.9rem;
+    }
+    input[type="text"]:focus { outline: 2px solid #6366f1; border-color: transparent; }
+    button {
+      background: #6366f1; color: white; border: none; padding: 0 14px;
+      border-radius: 8px; font-weight: 500; cursor: pointer; font-size: 0.9rem;
+    }
+    button:hover { background: #4f46e5; }
+
+    /* Sites List */
+    .site-list {
+      max-height: 180px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;
+    }
+    .site-item {
+      display: flex; justify-content: space-between; align-items: center;
+      background: white; padding: 10px 12px; border-radius: 8px;
+      border: 1px solid #e2e8f0; font-size: 0.9rem;
+    }
+    .delete-btn {
+      background: transparent; color: #ef4444; border: none; padding: 4px 8px;
+      cursor: pointer; font-size: 0.85rem; font-weight: bold;
+    }
+    .delete-btn:hover { color: #b91c1c; background: #ffeeee; border-radius: 4px; }
+  </style>
+</head>
+<body>
+
+  <h2>Breather Settings</h2>
+  
+  <div class="toggle-container">
+    <span class="toggle-label">Strict Mode (Kick mid-session)</span>
+    <label class="switch">
+      <input type="checkbox" id="strict-toggle">
+      <span class="slider"></span>
+    </label>
+  </div>
+
+  <div class="input-box">
+    <input type="text" id="site-input" placeholder="e.g., instagram.com">
+    <button id="add-btn">Add</button>
+  </div>
+
+  <div class="site-list" id="site-list"></div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
