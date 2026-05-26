@@ -5,13 +5,21 @@ document.addEventListener("DOMContentLoaded", () => {
     const addBtn = document.getElementById("add-btn");
     const siteListContainer = document.getElementById("site-list");
 
+    // New Slider Elements
+    const breathSlider = document.getElementById("breath-slider");
+    const breathCountLabel = document.getElementById("breath-count");
+
     // 1. Load configuration on startup
-    chrome.storage.local.get(["extensionActive", "strictMode", "blockedSites"], (result) => {
+    chrome.storage.local.get(["extensionActive", "strictMode", "blockedSites", "breathCycles"], (result) => {
         masterToggle.checked = result.extensionActive ?? true;
         strictToggle.checked = result.strictMode || false;
         renderSites(result.blockedSites || []);
 
-        // Force a tiny layout calculation gap, then remove the preload blocker
+        // Set slider value (default to 1 cycle if not configured yet)
+        const savedCycles = result.breathCycles ?? 1;
+        breathSlider.value = savedCycles;
+        updateSliderLabel(savedCycles);
+
         setTimeout(() => {
             document.body.classList.remove("preload");
         }, 50);
@@ -25,6 +33,17 @@ document.addEventListener("DOMContentLoaded", () => {
     strictToggle.addEventListener("change", (e) => {
         chrome.storage.local.set({ strictMode: e.target.checked });
     });
+
+    // Save slider changes instantly as the user drags
+    breathSlider.addEventListener("input", (e) => {
+        const val = parseInt(e.target.value, 10);
+        updateSliderLabel(val);
+        chrome.storage.local.set({ breathCycles: val });
+    });
+
+    function updateSliderLabel(value) {
+        breathCountLabel.textContent = `${value} ${value === 1 ? 'Breath Cycle' : 'Breath Cycles'}`;
+    }
 
     // 3. Add a new customized domain
     addBtn.addEventListener("click", () => {
