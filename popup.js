@@ -111,4 +111,44 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         });
     }
+
+    // 5. Active Tab Grace Timer Countdown Engine
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (!tabs[0] || !tabs[0].url) return;
+
+        try {
+            // Parse out the hostname of whatever tab you are looking at right now
+            let currentUrl = new URL(tabs[0].url);
+            let domain = currentUrl.hostname.replace("www.", "");
+            const storageKey = `whitelist_${domain}`;
+
+            chrome.storage.local.get(["blockedSites", storageKey], (res) => {
+                const blockedSites = res.blockedSites || [];
+                const allowedUntil = res[storageKey];
+
+                // Only fire if the site is actively on the blocklist AND has a valid unexpired timer running
+                if (blockedSites.includes(domain) && allowedUntil && allowedUntil > Date.now()) {
+                    const container = document.getElementById("grace-timer-container");
+                    const countdownLabel = document.getElementById("grace-timer-countdown");
+
+                    container.style.display = "block"; // Make the banner visible
+
+                    const timerInterval = setInterval(() => {
+                        const remainingTime = allowedUntil - Date.now();
+
+                        if (remainingTime <= 0) {
+                            clearInterval(timerInterval);
+                            container.style.display = "none";
+                        } else {
+                            const mins = Math.floor(remainingTime / 60000);
+                            const secs = Math.floor((remainingTime % 60000) / 1000);
+                            countdownLabel.textContent = `${domain} (${mins}:${secs < 10 ? '0' : ''}${secs} left)`;
+                        }
+                    }, 1000);
+                }
+            });
+        } catch (e) {
+            // Fail silently if user opens dashboard on system pages like chrome://extensions
+        }
+    });
 });

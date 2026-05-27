@@ -10,35 +10,42 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Fetch the configured breath cycles from storage before initializing the loop
   chrome.storage.local.get(["breathCycles"], (result) => {
-    const totalCycles = result.breathCycles ?? 1; 
+    const totalCycles = result.breathCycles ?? 1;
     let currentCycle = 0;
 
     function executeBreathingEngine() {
-      // If we have completed all assigned cycles, break the loop and transition to the menu
       if (currentCycle >= totalCycles) {
         statusText.innerText = "Intentional Choice";
-        circle.style.animation = "none"; 
+        circle.style.animation = "none";
         circle.style.transform = "scale(1)";
         circle.style.opacity = "0.1";
         choicesPanel.classList.add("visible");
         return;
       }
 
-      // Phase A: Inhale (Starts at the beginning of each 8s loop)
-      statusText.innerText = `Breathe in... (Cycle ${currentCycle + 1}/${totalCycles})`;
-      
-      // Phase B: Exhale (Triggers exactly halfway through the CSS scale animation at 4s)
+      // Step 1: Inhale (0s to 4s)
+      statusText.innerText = `Breathe in... (Box ${currentCycle + 1}/${totalCycles})`;
+
+      // Step 2: Hold Breath Full (4s to 8s)
       setTimeout(() => {
-        if (currentCycle < totalCycles) {
-          statusText.innerText = "And let it out...";
-        }
+        if (currentCycle < totalCycles) statusText.innerText = "Hold it...";
       }, 4000);
 
-      // Phase C: Cycle Completion (Triggers at 8s to progress the index forward)
+      // Step 3: Exhale (8s to 12s)
+      setTimeout(() => {
+        if (currentCycle < totalCycles) statusText.innerText = "Breathe out slowly...";
+      }, 8000);
+
+      // Step 4: Hold Breath Empty (12s to 16s)
+      setTimeout(() => {
+        if (currentCycle < totalCycles) statusText.innerText = "Hold empty...";
+      }, 12000);
+
+      // Step 5: Complete 16s Cycle Loop
       setTimeout(() => {
         currentCycle++;
-        executeBreathingEngine(); // Recursive call for the next cycle
-      }, 8000);
+        executeBreathingEngine();
+      }, 16000);
     }
 
     // Fire up the engine!
