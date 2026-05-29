@@ -1,17 +1,25 @@
 chrome.webNavigation.onBeforeNavigate.addListener((details) => {
-  if (details.frameId !== 0) return;
+  if (details.frameId !== 0) return; 
 
   const url = new URL(details.url);
   const hostname = url.hostname.replace("www.", "");
 
-  // Fetch BOTH the master switch state and the custom block list
-  chrome.storage.local.get(["extensionActive", "blockedSites"], (result) => {
-    const isExtensionActive = result.extensionActive ?? true; // Defaults to true
-    const blockedSites = result.blockedSites || [];
-
-    // IF the master switch is toggled OFF, drop out instantly and allow navigation
+  // Fetch extension tracking flags
+  chrome.storage.local.get(["extensionActive", "extensionDisabledUntil", "blockedSites"], (result) => {
+    let isExtensionActive = result.extensionActive ?? true;
+    const disabledUntil = result.extensionDisabledUntil;
+    
+    // Self-Healing Safeguard Check
+    if (!isExtensionActive && disabledUntil && Date.now() > disabledUntil) {
+      isExtensionActive = true;
+      chrome.storage.local.set({ extensionActive: true });
+      chrome.storage.local.remove("extensionDisabledUntil");
+    }
+    
+    // Abort processing instantly if extension is cleanly snoozed or paused
     if (!isExtensionActive) return;
 
+    const blockedSites = result.blockedSites || [];
     const matchedSite = blockedSites.find(site => hostname === site || hostname.endsWith("." + site));
 
     if (matchedSite) {
@@ -30,9 +38,12 @@ chrome.webNavigation.onBeforeNavigate.addListener((details) => {
   });
 });
 
-// Alarm Listener remains universal
+// Update our Alarm listener array to check for both site locks and the master wake up signal
 chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name.startsWith("lock_")) {
+  if (alarm.name === "enable_extension") {
+    chrome.storage.local.set({ extensionActive: true });
+    chrome.storage.local.remove("extensionDisabledUntil");
+  } else if (alarm.name.startsWith("lock_")) {
     const siteToLock = alarm.name.replace("lock_", "");
     chrome.storage.local.remove(`whitelist_${siteToLock}`);
   }

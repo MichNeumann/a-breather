@@ -1,40 +1,121 @@
 document.addEventListener("DOMContentLoaded", () => {
+    // Master Card State Elements
     const masterToggle = document.getElementById("master-toggle");
+    const masterActiveView = document.getElementById("master-active-view");
+    const masterSnoozeView = document.getElementById("master-snooze-view");
+    const masterCountdownView = document.getElementById("master-countdown-view");
+    const snoozeCountdownText = document.getElementById("snooze-countdown-text");
+    const resumeBtn = document.getElementById("resume-btn");
+    const cancelSnoozeBtn = document.getElementById("cancel-snooze-btn");
+
+    // Other Existing Elements
     const strictToggle = document.getElementById("strict-toggle");
     const siteInput = document.getElementById("site-input");
     const addBtn = document.getElementById("add-btn");
     const siteListContainer = document.getElementById("site-list");
-
-    // New Slider Elements
     const breathSlider = document.getElementById("breath-slider");
     const breathCountLabel = document.getElementById("breath-count");
 
-    // 1. Load configuration on startup
-    chrome.storage.local.get(["extensionActive", "strictMode", "blockedSites", "breathCycles"], (result) => {
-        masterToggle.checked = result.extensionActive ?? true;
+    let countdownInterval = null;
+
+    // Helper helper to handle UI component swaps cleanly
+    function switchMasterView(viewName) {
+        masterActiveView.style.display = viewName === "active" ? "flex" : "none";
+        masterSnoozeView.style.display = viewName === "snooze" ? "flex" : "none";
+        masterCountdownView.style.display = viewName === "countdown" ? "flex" : "none";
+    }
+
+    // Live ticker engine for the master pause countdown
+    function startSnoozeTicker(expirationTimestamp) {
+        if (countdownInterval) clearInterval(countdownInterval);
+
+        function updateTicker() {
+            const remaining = expirationTimestamp - Date.now();
+            if (remaining <= 0) {
+                clearInterval(countdownInterval);
+                switchMasterView("active");
+                masterToggle.checked = true;
+            } else {
+                const mins = Math.floor(remaining / 60000);
+                const secs = Math.floor((remaining % 60000) / 1000);
+                snoozeCountdownText.textContent = `Paused: ${mins}:${secs < 10 ? '0' : ''}${secs} left`;
+            }
+        }
+        updateTicker();
+        countdownInterval = setInterval(updateTicker, 1000);
+    }
+
+    // 1. Load initial configurations from storage
+    chrome.storage.local.get(["extensionActive", "extensionDisabledUntil", "strictMode", "blockedSites", "breathCycles"], (result) => {
+        const isActive = result.extensionActive ?? true;
+        const disabledUntil = result.extensionDisabledUntil;
+
+        // Evaluate layout pipeline routing based on current state
+        if (isActive) {
+            switchMasterView("active");
+            masterToggle.checked = true;
+        } else if (disabledUntil && disabledUntil > Date.now()) {
+            switchMasterView("countdown");
+            startSnoozeTicker(disabledUntil);
+        } else {
+            switchMasterView("snooze");
+        }
+
         strictToggle.checked = result.strictMode || false;
         renderSites(result.blockedSites || []);
 
-        // Set slider value (default to 1 cycle if not configured yet)
         const savedCycles = result.breathCycles ?? 1;
         breathSlider.value = savedCycles;
         updateSliderLabel(savedCycles);
 
-        setTimeout(() => {
-            document.body.classList.remove("preload");
-        }, 50);
+        setTimeout(() => { document.body.classList.remove("preload"); }, 50);
     });
 
-    // 2. Save Configuration Changes
+    // 2. Action Triggers: Master Toggle Interaction
     masterToggle.addEventListener("change", (e) => {
-        chrome.storage.local.set({ extensionActive: e.target.checked });
+        if (!e.target.checked) {
+            // User turned off extension -> swap line view immediately to pill selections
+            switchMasterView("snooze");
+            chrome.storage.local.set({ extensionActive: false });
+        }
     });
 
+    // Handle Pill Selection Clicks
+    document.querySelectorAll(".pill-btn").forEach(button => {
+        button.addEventListener("click", (e) => {
+            const minutes = parseInt(e.target.getAttribute("data-snooze"), 10);
+            const expiration = Date.now() + (minutes * 60 * 1000);
+
+            chrome.storage.local.set({
+                extensionActive: false,
+                extensionDisabledUntil: expiration
+            }, () => {
+                chrome.alarms.create("enable_extension", { delayInMinutes: minutes });
+                switchMasterView("countdown");
+                startSnoozeTicker(expiration);
+            });
+        });
+    });
+
+    // Manual Override: Re-enable early (Resume button)
+    function manualReenable() {
+        if (countdownInterval) clearInterval(countdownInterval);
+        chrome.alarms.clear("enable_extension");
+        chrome.storage.local.set({ extensionActive: true });
+        chrome.storage.local.remove("extensionDisabledUntil");
+        masterToggle.checked = true;
+        switchMasterView("active");
+    }
+
+    resumeBtn.addEventListener("click", manualReenable);
+    cancelSnoozeBtn.addEventListener("click", manualReenable);
+
+    // Strict Mode switch
     strictToggle.addEventListener("change", (e) => {
         chrome.storage.local.set({ strictMode: e.target.checked });
     });
 
-    // Save slider changes instantly as the user drags
+    // Breath slider
     breathSlider.addEventListener("input", (e) => {
         const val = parseInt(e.target.value, 10);
         updateSliderLabel(val);
@@ -44,6 +125,8 @@ document.addEventListener("DOMContentLoaded", () => {
     function updateSliderLabel(value) {
         breathCountLabel.textContent = `${value} ${value === 1 ? 'Breath Cycle' : 'Breath Cycles'}`;
     }
+
+    // ... (Keep your exact Step 3, 3b, and 4 site management hooks at the bottom unchanged)
 
     // 3. Add a new customized domain
     addBtn.addEventListener("click", () => {
