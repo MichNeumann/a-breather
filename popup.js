@@ -2,13 +2,20 @@ document.addEventListener("DOMContentLoaded", () => {
     // Master Card State Elements
     const masterToggle = document.getElementById("master-toggle");
     const masterActiveView = document.getElementById("master-active-view");
+    const masterCrankView = document.getElementById("master-crank-view");
     const masterSnoozeView = document.getElementById("master-snooze-view");
     const masterCountdownView = document.getElementById("master-countdown-view");
     const snoozeCountdownText = document.getElementById("snooze-countdown-text");
     const resumeBtn = document.getElementById("resume-btn");
     const cancelSnoozeBtn = document.getElementById("cancel-snooze-btn");
 
-    // Other Existing Elements
+    // Crank Visual Components
+    const crankContainer = document.getElementById("crank-container");
+    const crankInnerMask = document.getElementById("crank-inner-mask");
+    const crankHandle = document.getElementById("crank-handle");
+    const crankAbortBtn = document.getElementById("crank-abort-btn");
+
+    // Options Dashboard Panels
     const strictToggle = document.getElementById("strict-toggle");
     const siteInput = document.getElementById("site-input");
     const addBtn = document.getElementById("add-btn");
@@ -18,14 +25,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let countdownInterval = null;
 
-    // Helper helper to handle UI component swaps cleanly
+    // Hidden Labor Mechanics tracking metrics
+    let isCranking = false;
+    let lastAngle = null;
+    let accumulatedRotationDegrees = 0;
+    const TARGET_ROTATIONS = 200; // Keeping your hardcore setting!
+    const TARGET_DEGREES = TARGET_ROTATIONS * 360;
+
     function switchMasterView(viewName) {
         masterActiveView.style.display = viewName === "active" ? "flex" : "none";
+        masterCrankView.style.display = viewName === "crank" ? "flex" : "none";
         masterSnoozeView.style.display = viewName === "snooze" ? "flex" : "none";
         masterCountdownView.style.display = viewName === "countdown" ? "flex" : "none";
     }
 
-    // Live ticker engine for the master pause countdown
     function startSnoozeTicker(expirationTimestamp) {
         if (countdownInterval) clearInterval(countdownInterval);
 
@@ -45,12 +58,11 @@ document.addEventListener("DOMContentLoaded", () => {
         countdownInterval = setInterval(updateTicker, 1000);
     }
 
-    // 1. Load initial configurations from storage
+    // 1. Initialize Configuration States
     chrome.storage.local.get(["extensionActive", "extensionDisabledUntil", "strictMode", "blockedSites", "breathCycles"], (result) => {
         const isActive = result.extensionActive ?? true;
         const disabledUntil = result.extensionDisabledUntil;
 
-        // Evaluate layout pipeline routing based on current state
         if (isActive) {
             switchMasterView("active");
             masterToggle.checked = true;
@@ -71,16 +83,107 @@ document.addEventListener("DOMContentLoaded", () => {
         setTimeout(() => { document.body.classList.remove("preload"); }, 50);
     });
 
-    // 2. Action Triggers: Master Toggle Interaction
+    // 2. State Actions: Handle Master Switch Flick
     masterToggle.addEventListener("change", (e) => {
         if (!e.target.checked) {
-            // User turned off extension -> swap line view immediately to pill selections
-            switchMasterView("snooze");
-            chrome.storage.local.set({ extensionActive: false });
+            switchMasterView("crank");
+            accumulatedRotationDegrees = 0;
+            lastAngle = null;
+            crankHandle.style.transform = `rotate(0deg)`;
+            crankContainer.style.background = `#e2e8f0`;
+            crankInnerMask.style.backgroundColor = "#f8fafc"; // Reset inner core color
         }
     });
 
-    // Handle Pill Selection Clicks
+    // Precision Anti-Cheat Mechanical Crank Engine
+    crankContainer.addEventListener("mousedown", (e) => {
+        isCranking = true;
+
+        const rect = crankContainer.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+
+        const dx = e.clientX - centerX;
+        const dy = e.clientY - centerY;
+        const distanceFromCenter = Math.sqrt(dx * dx + dy * dy);
+
+        if (distanceFromCenter < 66) {
+            crankContainer.style.cursor = "not-allowed";
+            crankInnerMask.style.backgroundColor = "#fee2e2"; 
+            lastAngle = null;
+        } else {
+            crankContainer.style.cursor = "grabbing";
+            lastAngle = Math.atan2(dy, dx);
+        }
+
+        e.preventDefault();
+    });
+
+    window.addEventListener("mousemove", (e) => {
+        if (!isCranking) return;
+
+        const rect = crankContainer.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+
+        const dx = e.clientX - centerX;
+        const dy = e.clientY - centerY;
+
+        const distanceFromCenter = Math.sqrt(dx * dx + dy * dy);
+        const MIN_RADIUS = 66; 
+
+        if (distanceFromCenter < MIN_RADIUS) {
+            crankContainer.style.cursor = "not-allowed";
+            crankInnerMask.style.backgroundColor = "#fee2e2";
+            lastAngle = null;
+            return;
+        }
+
+        crankContainer.style.cursor = "grabbing";
+        crankInnerMask.style.backgroundColor = "#f8fafc"; 
+
+        const currentAngle = Math.atan2(dy, dx);
+
+        if (lastAngle !== null) {
+            let delta = currentAngle - lastAngle;
+
+            if (delta > Math.PI) delta -= 2 * Math.PI;
+            if (delta < -Math.PI) delta += 2 * Math.PI;
+
+            accumulatedRotationDegrees += Math.abs(delta * (180 / Math.PI));
+
+            crankHandle.style.transform = `rotate(${accumulatedRotationDegrees}deg)`;
+
+            const fillPercentage = Math.min(100, (accumulatedRotationDegrees / TARGET_DEGREES) * 100);
+            crankContainer.style.background = `conic-gradient(#2563eb 0%, #2563eb ${fillPercentage}%, #e2e8f0 ${fillPercentage}%, #e2e8f0 100%)`;
+
+            if (accumulatedRotationDegrees >= TARGET_DEGREES) {
+                isCranking = false;
+                crankContainer.style.cursor = "grab";
+                switchMasterView("snooze");
+                chrome.storage.local.set({ extensionActive: false });
+            }
+        }
+        lastAngle = currentAngle;
+    });
+
+    window.addEventListener("mouseup", () => {
+        if (isCranking) {
+            isCranking = false;
+            crankContainer.style.cursor = "grab";
+            crankInnerMask.style.backgroundColor = "#f8fafc";
+            lastAngle = null;
+        }
+    });
+
+    crankAbortBtn.addEventListener("click", () => {
+        isCranking = false;
+        masterToggle.checked = true;
+        switchMasterView("active");
+        chrome.storage.local.set({ extensionActive: true });
+    });
+
+    // Pill selections
     document.querySelectorAll(".pill-btn").forEach(button => {
         button.addEventListener("click", (e) => {
             const minutes = parseInt(e.target.getAttribute("data-snooze"), 10);
@@ -97,7 +200,6 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 
-    // Manual Override: Re-enable early (Resume button)
     function manualReenable() {
         if (countdownInterval) clearInterval(countdownInterval);
         chrome.alarms.clear("enable_extension");
@@ -110,12 +212,10 @@ document.addEventListener("DOMContentLoaded", () => {
     resumeBtn.addEventListener("click", manualReenable);
     cancelSnoozeBtn.addEventListener("click", manualReenable);
 
-    // Strict Mode switch
     strictToggle.addEventListener("change", (e) => {
         chrome.storage.local.set({ strictMode: e.target.checked });
     });
 
-    // Breath slider
     breathSlider.addEventListener("input", (e) => {
         const val = parseInt(e.target.value, 10);
         updateSliderLabel(val);
@@ -126,20 +226,16 @@ document.addEventListener("DOMContentLoaded", () => {
         breathCountLabel.textContent = `${value} ${value === 1 ? 'Breath Cycle' : 'Breath Cycles'}`;
     }
 
-    // ... (Keep your exact Step 3, 3b, and 4 site management hooks at the bottom unchanged)
-
-    // 3. Add a new customized domain
+    // 3. Add Custom Domain Items via Input Click Hook
     addBtn.addEventListener("click", () => {
         let rawUrl = siteInput.value.trim().toLowerCase();
         if (!rawUrl) return;
 
-        // Clean up input variations (removes http, https, trailing slashes, and www)
         try {
             if (!rawUrl.startsWith('http://') && !rawUrl.startsWith('https://')) {
                 rawUrl = 'https://' + rawUrl;
             }
-            let hostname = new URL(rawUrl).hostname;
-            hostname = hostname.replace("www.", "");
+            let hostname = new URL(rawUrl).hostname.replace("www.", "");
 
             chrome.storage.local.get(["blockedSites"], (result) => {
                 const sites = result.blockedSites || [];
@@ -155,14 +251,12 @@ document.addEventListener("DOMContentLoaded", () => {
             alert("Please enter a valid website domain name.");
         }
     });
-    // 3b. Also trigger the add button logic when pressing the "Enter" key
+
     siteInput.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
-            addBtn.click(); // Programmatically trigger the click event setup above
-        }
+        if (e.key === "Enter") addBtn.click();
     });
 
-    // 4. Render array items into dashboard list
+    // 4. Render Active Domains list
     function renderSites(sites) {
         siteListContainer.innerHTML = "";
         if (sites.length === 0) {
@@ -173,34 +267,27 @@ document.addEventListener("DOMContentLoaded", () => {
         sites.forEach(site => {
             const row = document.createElement("div");
             row.className = "site-item";
-            row.innerHTML = `
-        <span>${site}</span>
-        <button class="delete-btn" data-site="${site}">Remove</button>
-      `;
+            row.innerHTML = `<span>${site}</span><button class="delete-btn" data-site="${site}">Remove</button>`;
             siteListContainer.appendChild(row);
         });
 
-        // Bind event hooks to deletion actions
         document.querySelectorAll(".delete-btn").forEach(btn => {
             btn.addEventListener("click", (e) => {
                 const siteToRemove = e.target.getAttribute("data-site");
                 chrome.storage.local.get(["blockedSites"], (result) => {
                     const sites = result.blockedSites || [];
                     const updatedSites = sites.filter(s => s !== siteToRemove);
-                    chrome.storage.local.set({ blockedSites: updatedSites }, () => {
-                        renderSites(updatedSites);
-                    });
+                    chrome.storage.local.set({ blockedSites: updatedSites }, () => { renderSites(updatedSites); });
                 });
             });
         });
     }
 
-    // 5. Active Tab Grace Timer Countdown Engine
+    // 5. ADDED: Active Tab Grace Timer Countdown Engine
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         if (!tabs[0] || !tabs[0].url) return;
 
         try {
-            // Parse out the hostname of whatever tab you are looking at right now
             let currentUrl = new URL(tabs[0].url);
             let domain = currentUrl.hostname.replace("www.", "");
             const storageKey = `whitelist_${domain}`;
@@ -209,12 +296,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 const blockedSites = res.blockedSites || [];
                 const allowedUntil = res[storageKey];
 
-                // Only fire if the site is actively on the blocklist AND has a valid unexpired timer running
+                // If the user is viewing a blocked site that has a running grace token
                 if (blockedSites.includes(domain) && allowedUntil && allowedUntil > Date.now()) {
                     const container = document.getElementById("grace-timer-container");
                     const countdownLabel = document.getElementById("grace-timer-countdown");
-
-                    container.style.display = "block"; // Make the banner visible
+                    
+                    container.style.display = "block"; // Turn on the banner
 
                     const timerInterval = setInterval(() => {
                         const remainingTime = allowedUntil - Date.now();
@@ -231,7 +318,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             });
         } catch (e) {
-            // Fail silently if user opens dashboard on system pages like chrome://extensions
+            // Fails silently on local configurations (like chrome://extensions)
         }
     });
 });
