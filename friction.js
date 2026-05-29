@@ -14,6 +14,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let currentCycle = 0;
 
     function executeBreathingEngine() {
+      // If we have completed all assigned cycles, break the loop and transition to the menu
       if (currentCycle >= totalCycles) {
         statusText.innerText = "Intentional Choice";
         circle.style.animation = "none";
@@ -36,16 +37,24 @@ document.addEventListener("DOMContentLoaded", () => {
         if (currentCycle < totalCycles) statusText.innerText = "Breathe out slowly...";
       }, 8000);
 
-      // Step 4: Hold Breath Empty (12s to 16s)
+      // Step 4: Hold Breath Empty (12s to 16s) OR Fast-Forward on Last Cycle
       setTimeout(() => {
-        if (currentCycle < totalCycles) statusText.innerText = "Hold empty...";
+        if (currentCycle === totalCycles - 1) {
+          // UX Optimization: It's the last cycle! Cut the 4s empty hold and transition now
+          currentCycle++;
+          executeBreathingEngine();
+        } else if (currentCycle < totalCycles) {
+          statusText.innerText = "Hold empty...";
+        }
       }, 12000);
 
-      // Step 5: Complete 16s Cycle Loop
-      setTimeout(() => {
-        currentCycle++;
-        executeBreathingEngine();
-      }, 16000);
+      // Step 5: Complete 16s Cycle Loop (Only schedule if it's NOT the last cycle)
+      if (currentCycle < totalCycles - 1) {
+        setTimeout(() => {
+          currentCycle++;
+          executeBreathingEngine();
+        }, 16000);
+      }
     }
 
     // Fire up the engine!
